@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Clients
+{% endblock %}
+
+{% block content %}
+<div class="m-2">
+  <h5>Clients</h5>
+  <div class="row row-cols-auto g-0">
+    {% for client in Client.query.all() %}
+      <div class="col card me-1 mb-1 mw-100">
+        <div class="card-body m-1 p-1">
+          <h5 class="card-title m-0">
+            <a class="link-offset-3 link-body-emphasis link-underline-opacity-0 link-underline-opacity-0-hover" href="/clients/{{ client.id }}">{{ client.name }}</a>
+          </h5>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  <a class="btn btn-primary mt-2" href="/clients/new">New client</a>
+</div>
+{% endblock %}

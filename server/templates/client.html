@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{{ client.name }}
+{% endblock %}
+
+{% block content %}
+<h5 class="mt-2">{{ client.name }}</h5>
+<div class="row row-cols-auto g-0">
+  <div class="col card mb-1 me-1">
+    <div class="card-body">
+      <h5 class="card-title">Controls</h5>
+      <div class="card-text">
+        <div class="mb-1 btn-group">
+          <form action="/api/user/clients/{{ client.id }}/start" method="POST">
+            <button class="btn btn-success rounded-end-0" type="submit">Start</button>
+          </form>
+          <form action="/api/user/clients/{{ client.id }}/stop" method="POST">
+            <button class="btn btn-danger rounded-start-0" type="submit">Stop</button>
+          </form>
+        </div>
+        <div class="mb-1">
+          <form action="/api/user/clients/{{ client.id }}/upload" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" class="form-control rounded-bottom-0" required>
+            <div class="input-group">
+              <input type="text" name="name" class="form-control border-top-0 rounded-top-0" placeholder="Path" required>
+              <button type="submit" class="btn btn-outline-primary rounded-top-0">Upload</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
+          <form action="/api/user/clients/{{ client.id }}/download" method="POST">
+            <div class="input-group">
+              <input type="text" name="name" class="form-control" placeholder="Path" required>
+              <button type="submit" class="btn btn-outline-primary">Download</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
+          <button class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#tokenCollapse">Show token</button>
+          <div class="collapse card my-1 mw-100 w-ft" id="tokenCollapse">
+            <div class="card-body">
+              <h5 class="card-title">
+                Token
+              </h5>
+              <div class="card-text">
+                <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ client.token }}')"
+                      style="cursor: pointer;" title="Copy">{{ client.token }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
+    </div>
+  </div>
+  <div class="col card mb-1 me-1">
+    <div class="card-body">
+      <h5 class="card-title">Console</h5>
+      <div class="card-text bg-light py-1 px-2 rounded">
+        <div class="overflow-auto mb-1" style="max-height: 20em; max-width: 25em;" id="console">
+          <code>
+            Loading
+          </code>
+        </div>
+        <form action="/api/user/clients/{{ client.id }}/command" method="POST" class="input-group my-1">
+          <input type="text" name="command" placeholder="Command" class="form-control" autofocus required>
+          <button type="submit" class="btn btn-outline-primary">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col card mb-1 me-1">
+    <div class="card-body">
+      <h5 class="card-title">Ignore list</h5>
+      <div class="card-text list-group overflow-auto" style="max-height: 23em;max-width: 17em;">
+        {% for rule in client.ignorerules %}
+          <div class="list-group-item d-flex">
+            <span class="float-start flex-fill w-50">
+              {% for i in rule.rule %}{%
+                if i in (".", "^", "$", "*", "+", "?", "{", "}", "\\", "[", "]", "|", "(", ")")
+              %}<span class="text-primary">{{ i }}</span>{% else %}{{ i }}{% endif %}{% endfor %}
+            </span>
+            <form action="/api/user/clients/{{ client.id }}/delignore" method="POST">
+              <input type="hidden" name="rule" value="{{ rule.rule }}">
+              <button type="submit" class="btn-close float-end flex-fill" title="Delete"></button>
+            </form>
+          </div>
+        {% endfor %}
+        <form class="input-group" action="/api/user/clients/{{ client.id }}/addignore" method="POST">
+          <input class="form-control border-top-0 rounded-top-0" type="text" placeholder="Rule" name="rule" required>
+          <button type="submit" class="btn btn-outline-primary rounded-top-0">Add</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col card mb-1 me-1">
+    <div class="card-body">
+      <h5 class="card-title">Commands</h5>
+      <div class="card-text" style="max-width: 17em;">
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('start')"
+              style="cursor: pointer;" title="Copy">start</span> - Start monitoring<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('stop')"
+              style="cursor: pointer;" title="Copy">stop</span> - Stop monitoring<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('lock')"
+              style="cursor: pointer;" title="Copy">lock</span> letter - Make a drive read-only<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('release')"
+              style="cursor: pointer;" title="Copy">release</span> letter - Make a drive non-read-only<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('lockfile')"
+              style="cursor: pointer;" title="Copy">lockfile</span> path - Make a path read-only<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('releasefile')"
+              style="cursor: pointer;" title="Copy">releasefile</span> path - Make a path non-read-only<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('listdir')"
+              style="cursor: pointer;" title="Copy">listdir</span> path - List the contents of directory<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('download')"
+              style="cursor: pointer;" title="Copy">download</span> path - Download file<br>
+<!--        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('upload')"-->
+<!--              style="cursor: pointer;" title="Copy">upload</span> path with a file - Upload file<br>-->
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('clear')"
+              style="cursor: pointer;" title="Copy">clear</span> - Clear console<br>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="deleteModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5">Delete client</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete {{ client.name }}?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <form class="m-1" action="/api/user/clients/{{ client.id }}/delete" method="POST">
+          <button class="btn btn-danger" type="submit">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  let loadAlerts = window.onload
+  window.onload = function() {
+    loadAlerts()
+    let cons = document.getElementById('console')
+    reload_console_HTML = () => fetch("/api/user/clients/{{ client.id }}/commandsHTML?page={{ page }}", { method: "POST" }).then(r => r.text()).then(t => {
+      let is_bottom = (cons.scrollHeight - cons.scrollTop < 330);
+      if (cons.innerHTML != t) {
+        cons.innerHTML = t;
+      }
+      if (is_bottom) {
+        cons.scrollTop = cons.scrollHeight;
+        // cons.scrollTo({ top: cons.scrollHeight, behavior: 'smooth' });
+      }
+    }).catch(e => {})
+    fetch("/api/user/clients/{{ client.id }}/commandsHTML?page={{ page }}", { method: "POST" }).then(r => r.text()).then(t => {cons.innerHTML = t;cons.scrollTop = cons.scrollHeight;}).catch(e => {})
+    cons.scrollTop = cons.scrollHeight;
+    function reload_console() {
+      reload_console_HTML()
+      setTimeout(reload_console, 1000)
+    }
+    setTimeout(reload_console, 1000)
+  }
+</script>
+{% endblock %}

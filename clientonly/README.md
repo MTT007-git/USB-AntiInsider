@@ -12,7 +12,7 @@ Remotely watch and control USB drives through a Telegram bot.
 ## Before use
 
 1. Clone the repo `git clone https://github.com/MTT007-git/USB-AntiInsider.git`
-2. Install dependencies `pip install -r requirements.txt`
+2. Install dependencies `pip install psutil watchdog pyTelegramBotAPI python-dotenv`
 3. Rename `.env.example` to `.env`
 4. Replace example values with actual values (see comments for details)
 5. Remove all comments (`#`)
@@ -21,8 +21,7 @@ Remotely watch and control USB drives through a Telegram bot.
 
 ## How to use
 
-Run `server/app.py` on a server
-Run `client/main.py` on the client machines (it will ask for administrator if it doesn't have it)
+Run `main.py` (it will ask for administrator if it doesn't have it)
 
 ## Commands
 - /start - Start monitoring
@@ -33,13 +32,15 @@ Run `client/main.py` on the client machines (it will ask for administrator if it
 - /releasefile `path` - Make a file/folder non-read-only
 - /ignorelist - List all ignored regex patterns
 - /ignoreadd `regex` - Add regex pattern `regex` to ignore
-- /ignoredel `regex` - Remove ignored regex pattern `regex`
+- /ignoresub `regex` - Remove ignored regex pattern `regex`
 - /ignoreedit `index` `regex` - Edit ignored regex pattern at `index` to `regex`
 - /listdir `folder_path` - List the contents of directory `folder_path`
 - /download `file_path` - Download file `file_path`
 - /upload `file_path` with a file - Upload file at `file_path`
 - /auth `key` - Authorize the current chat if `key` is correct
 - /deauth - Deauthorize everyone
+- /reset - Reset monitoring
+- /shut - Force program shutdown
 - /help - List all commands
 
 ## Autorun on startup

@@ -1,5 +1,8 @@
-﻿.env
+﻿*.env
 .idea
 ignore.json
 welcome.png
 icons8-usb-100.png
+server/__pycache__
+server/instance
+server/migrations

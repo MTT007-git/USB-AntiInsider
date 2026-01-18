@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Home
+{% endblock %}
+
+{% block content %}
+<div class="row row-cols-auto m-1 gx-0">
+  <div class="col card mb-1 me-1">
+    <div class="card-body m-2 p-2">
+      <h5 class="card-title">
+        <a class="link-offset-3 link-body-emphasis link-underline-opacity-0 link-underline-opacity-0-hover" href="/clients">Clients</a>
+      </h5>
+      <div class="card-text">
+        <div class="row row-cols-auto m-0">
+        {% for client in Client.query.all() %}
+          <div class="col card me-1 mb-1">
+            <div class="card-body m-1 p-1">
+              <h5 class="card-title m-0">
+                <a class="link-offset-3 link-body-emphasis link-underline-opacity-0 link-underline-opacity-0-hover" href="/clients/{{ client.id }}">{{ client.name }}</a>
+              </h5>
+            </div>
+          </div>
+        {% endfor %}
+        </div>
+        <a class="btn btn-primary mt-2" href="/clients/new">New client</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
