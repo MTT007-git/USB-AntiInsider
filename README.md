@@ -28,6 +28,7 @@ Remotely watch and control USB drives through a Telegram bot.
 ## How to use
 
 Run `server/app.py` on a server
+
 Run `client/main.py` on the client machines (it will ask for administrator if it doesn't have it)
 
 ## Commands
