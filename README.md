@@ -16,8 +16,14 @@ Remotely watch and control USB drives through a Telegram bot.
 3. Rename `.env.example` to `.env`
 4. Replace example values with actual values (see comments for details)
 5. Remove all comments (`#`)
-6. Create a Telegram bot using **BotFather**
-7. Add commands (optional)
+6. In `/server`, run:
+   ```cmd
+   flask db init
+   flask db migrate
+   flask db upgrade
+   ```
+7. Create a Telegram bot using **BotFather**
+8. Add commands (optional)
 
 ## How to use
 
