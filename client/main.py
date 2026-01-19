@@ -390,5 +390,8 @@ while True:
             print(f"Unknown command \"{command[1]}\" with arguments {command[2:]} from user {command[0]}")
             continue
         print(command)
-        handlers[command[1]](command[0], command[1], command[2:-1], command[-1])
+        try:
+            handlers[command[1]](command[0], command[1], command[2:-1], command[-1])
+        except Exception as ex:
+            print(f"Exeption: {ex}")
     time.sleep(1)
