@@ -56,4 +56,5 @@ def context():
         if not isinstance(user, User):
             return None
         return user.username
-    return dict(get_username=get_username, Client=Client, ctime=time.ctime, len=len, int=int, min=min, enumerate=enumerate)
+    return dict(get_username=get_username, Client=Client, ctime=time.ctime, len=len, int=int, min=min,
+                enumerate=enumerate, time=time.time)

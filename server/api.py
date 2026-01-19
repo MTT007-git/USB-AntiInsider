@@ -90,6 +90,8 @@ def send(client):
         else:
             commands.append((None, command.command, *arguments, command.is_tg))
         command.is_sent = True
+        if command.command == "stop":
+            TgMonitor.query.delete()
     if clear:
         CommandArgument.query.delete()
         Command.query.delete()

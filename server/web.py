@@ -66,8 +66,7 @@ def download(user, client_id, command_id):
         flash("File not found", "danger")
         return render_template("clients.html")
     name = name.argument.replace("\\", "/").split("/")[-1]
-    if name.endswith("`"):
-        name = name[:-1]
+    name = name.strip("`")
     file = file.argument
     try:
         file = base64.b64decode(file)

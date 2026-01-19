@@ -14,4 +14,4 @@ app.register_blueprint(web)
 if __name__ == "__main__":
     if os.getenv("WERKZEUG_RUN_MAIN") == "true":
         start_tg()
-    app.run(port=int(os.getenv("USB_PORT", "8080")), debug=True)
+    app.run(host=os.getenv("USB_HOST", "localhost"), port=int(os.getenv("USB_PORT", "8080")), debug=True)

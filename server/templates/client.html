@@ -11,6 +11,26 @@
     <div class="card-body">
       <h5 class="card-title">Controls</h5>
       <div class="card-text">
+        <div class="mb-1" title="{{ ctime(client.last_check) }}">
+          {% if time() - client.last_check <= 5 %}
+            <span class="position-absolute p-1 mt-2 bg-success rounded-circle"></span>
+          {% else %}
+            <span class="position-absolute p-1 mt-2 bg-secondary rounded-circle"></span>
+          {% endif %}
+          <span class="ms-3">
+            {% if time() - client.last_check <= 2 %}
+              Online
+            {% elif time() - client.last_check <= 60 %}
+              Last online: {{ int(time() - client.last_check) }} seconds ago
+            {% elif time() - client.last_check <= 3600 %}
+              Last online: {{ int((time() - client.last_check) / 60) }} minutes ago
+            {% elif time() - client.last_check <= 3600 * 24 %}
+              Last online: {{ int((time() - client.last_check) / 3600) }} hours ago
+            {% else %}
+              Last online: {{ ctime(client.last_check) }}
+            {% endif %}
+          </span>
+        </div>
         <div class="mb-1 btn-group">
           <form action="/api/user/clients/{{ client.id }}/start" method="POST">
             <button class="btn btn-success rounded-end-0" type="submit">Start</button>

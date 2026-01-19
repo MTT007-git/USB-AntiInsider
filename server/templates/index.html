@@ -17,7 +17,13 @@ Home
           <div class="col card me-1 mb-1">
             <div class="card-body m-1 p-1">
               <h5 class="card-title m-0">
-                <a class="link-offset-3 link-body-emphasis link-underline-opacity-0 link-underline-opacity-0-hover" href="/clients/{{ client.id }}">{{ client.name }}</a>
+                {% if time() - client.last_check <= 5 %}
+                  <span class="position-absolute p-1 mt-2 bg-success rounded-circle"></span>
+                {% else %}
+                  <span class="position-absolute p-1 mt-2 bg-secondary rounded-circle"></span>
+                {% endif %}
+                <a class="ms-3 link-offset-3 link-body-emphasis link-underline-opacity-0 link-underline-opacity-0-hover"
+                   href="/clients/{{ client.id }}" title="{{ ctime(client.last_check) }}">{{ client.name }}</a>
               </h5>
             </div>
           </div>
