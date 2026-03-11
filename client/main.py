@@ -80,37 +80,6 @@ def get_removable_drives():
     return set(drives)
 
 
-def get_disk_number_from_letter(letter):
-    ps_script = rf"""
-        $d = Get-Partition -DriveLetter {letter} -ErrorAction SilentlyContinue
-        if ($d) {{
-            $disk = Get-Disk -Number $d.DiskNumber
-            [PSCustomObject]@{{
-                DriveLetter = '{letter}'
-                DiskNumber  = $d.DiskNumber
-                PartitionNumber = $d.PartitionNumber
-                Model = $disk.FriendlyName
-                SizeGB = [math]::Round($disk.Size/1GB, 1)
-            }} | ConvertTo-Json
-        }}
-        """
-    res = subprocess.run(
-        ["powershell", "-NoProfile", "-Command", ps_script],
-        capture_output=True, text=True
-    )
-
-    if not res.stdout.strip():
-        print(f"No disk found for {letter}:\\")
-        print("Output:", res.stderr)
-        return None
-
-    try:
-        return json.loads(res.stdout)
-    except json.JSONDecodeError:
-        print("Failed to parse PowerShell output:", res.stdout)
-        return None
-
-
 @handler("lock")
 def lock(usr, cmd, args, tg):
     disk = args[0]
@@ -121,17 +90,8 @@ def lock(usr, cmd, args, tg):
         send_update((usr, cmd, "danger", "The program is not run as admin", tg))
         return
     send_update((usr, cmd, "info", f"Locking disk {disk}...", tg))
-    disk_number = get_disk_number_from_letter(disk)
-    if disk_number is None or "DiskNumber" not in disk_number:
-        send_update((usr, cmd, "danger", f"The disk {disk} doesn't exist", tg))
-        return
-    script = f"select disk {disk_number["DiskNumber"]}\nattributes disk set readonly\nexit\n"
-    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as f:
-        f.write(script)
-        path = f.name
-    subprocess.run(["diskpart", "/s", path], check=True)
+    subprocess.run(["mountvol", f"{disk}:", "/D"], check=True)
     send_update((None, cmd, "success", f"Disk {disk} locked", tg))
-    watch_drive(f"{disk}:\\")
 
 
 @handler("release")
@@ -144,17 +104,9 @@ def release(usr, cmd, args, tg):
         send_update((usr, cmd, "danger", "The program is not run as admin", tg))
         return
     send_update((usr, cmd, "info", f"Releasing disk {disk}...", tg))
-    disk_number = get_disk_number_from_letter(disk)
-    if disk_number is None or "DiskNumber" not in disk_number:
-        send_update((usr, cmd, "danger", f"The disk {disk} doesn't exist", tg))
-        return
-    script = f"select disk {disk_number["DiskNumber"]}\nattributes disk clear readonly\nexit\n"
-    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as f:
-        f.write(script)
-        path = f.name
-    subprocess.run(["diskpart", "/s", path], check=True)
+    subprocess.run(["mountvol", f"{disk}:", "/L"], check=True)
     send_update((None, cmd, "success", f"Disk {disk} released"))
-    watch_drive(f"{disk}:\\")
+    threading.Thread(target=watch_drive, args=(f"{disk}:\\",), daemon=True).start()
 
 
 @handler("lockfile")
