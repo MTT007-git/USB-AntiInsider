@@ -117,6 +117,20 @@ def release(msg, cid):
     add_command(cid, msg.chat.id, "release", (disk,), True)
 
 
+@bot.message_handler(commands=["setfilter"])
+@client
+def setfilter_tg(msg, cid):
+    if len(msg.text.split(" ", 2)) <= 2:
+        bot.send_message(msg.chat.id, f"Syntax:\n`/setfilter {cid} ignore|alert`", parse_mode="Markdown")
+        return
+    mode = msg.text.split(" ", 2)[2]
+    if mode not in ("ignore", "alert"):
+        bot.send_message(msg.chat.id, "Mode must be 'ignore' or 'alert'")
+        return
+    add_command(cid, msg.chat.id, "setfilter", (mode,), True)
+    bot.send_message(msg.chat.id, f"Filter mode set to: {mode}")
+
+
 @bot.message_handler(commands=["lockfile"])
 @client
 def lockfile(msg, cid):
@@ -363,13 +377,57 @@ def ignoredel(msg, cid):
     bot.send_message(msg.chat.id, f"Removed ignore regex:\n`{pattern}`", parse_mode="Markdown")
 
 
+@bot.message_handler(commands=["alertlist"])
+@client
+def alertlist(msg, cid):
+    bot.send_message(msg.chat.id, "\n".join([f"{idx + 1}. `{i.rule}`" for idx, i in
+                                             enumerate(Client.query.filter_by(id=cid).first().alertrules)]),
+                     parse_mode="Markdown")
+
+
+@bot.message_handler(commands=["alertadd"])
+@client
+def alertadd(msg, cid):
+    if len(msg.text.split(" ", 2)) <= 2:
+        bot.send_message(msg.chat.id, f"Syntax:\n`/alertadd {cid} pattern`", parse_mode="Markdown")
+        return
+    pattern = msg.text.split(" ", 2)[2]
+    if AlertRule.query.filter_by(client_id=cid, rule=pattern).first():
+        bot.send_message(msg.chat.id, "Regex already in alert list")
+        return
+    rule = AlertRule(client_id=cid, rule=pattern)
+    db.session.add(rule)
+    db.session.commit()
+    add_command(cid, msg.chat.id, "alertlist", (r.rule for r in AlertRule.query.filter_by(client_id=cid).all()), True)
+    bot.send_message(msg.chat.id, f"Added alert regex:\n`{pattern}`", parse_mode="Markdown")
+
+
+@bot.message_handler(commands=["alertdel"])
+@client
+def alertdel(msg, cid):
+    if len(msg.text.split(" ", 2)) <= 2:
+        bot.send_message(msg.chat.id, f"Syntax:\n`/alertdel {cid} pattern`", parse_mode="Markdown")
+        return
+    pattern = msg.text.split(" ", 2)[2]
+    rule = AlertRule.query.filter_by(client_id=cid, rule=pattern).first()
+    if not rule:
+        bot.send_message(msg.chat.id, "Regex not in alert list")
+        return
+    db.session.delete(rule)
+    db.session.commit()
+    add_command(cid, msg.chat.id, "alertlist", (r.rule for r in AlertRule.query.filter_by(client_id=cid).all()), True)
+    bot.send_message(msg.chat.id, f"Removed alert regex:\n`{pattern}`", parse_mode="Markdown")
+
+
 @bot.message_handler(commands=["listdir"])
 @client
 def listdir(msg, cid):
     if len(msg.text.split(" ", 2)) <= 2:
         bot.send_message(msg.chat.id, f"Syntax:\n`/listdir {cid} D:/`", parse_mode="Markdown")
         return
-    path = msg.text.split(" ", 2)[2].replace("\\", "/").strip("/") + "/"
+    path = msg.text.split(" ", 2)[2].replace("\\", "/")
+    if not path.endswith("/"):
+        path += "/"
     add_command(cid, msg.chat.id, "listdir", (path,), True)
 
 
@@ -488,6 +546,9 @@ def help_(msg):
 
 
 def command(cid, uid, cmd, args):
+    # Convert all args to strings
+    args = [str(arg) for arg in args]
+    
     if cmd == r"\[download]" and len(args) == 2:
         file = io.BytesIO()
         file.write(base64.b64decode(args[1]))

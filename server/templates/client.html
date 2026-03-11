@@ -5,6 +5,10 @@
 {% endblock %}
 
 {% block content %}
+<div id="serverOfflineAlert" class="alert alert-danger alert-dismissible fade" style="display: none;">
+  Server unreachable for more than 10 seconds!
+  <button class="btn-close" data-bs-dismiss="alert"></button>
+</div>
 <h5 class="mt-2">{{ client.name }}</h5>
 <div class="row row-cols-auto g-0">
   <div class="col card mb-1 me-1">
@@ -64,7 +68,7 @@
                 Token
               </h5>
               <div class="card-text">
-                <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ client.token }}')"
+                <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ client.token }}', this)"
                       style="cursor: pointer;" title="Copy">{{ client.token }}</span>
               </div>
             </div>
@@ -84,7 +88,7 @@
           </code>
         </div>
         <form action="/api/user/clients/{{ client.id }}/command" method="POST" class="input-group my-1">
-          <input type="text" name="command" placeholder="Command" class="form-control" autofocus required>
+          <input type="text" name="command" placeholder="Command" class="form-control" id="commandInput" autocomplete="off" autofocus required>
           <button type="submit" class="btn btn-outline-primary">Send</button>
         </form>
       </div>
@@ -92,24 +96,55 @@
   </div>
   <div class="col card mb-1 me-1">
     <div class="card-body">
-      <h5 class="card-title">Ignore list</h5>
-      <div class="card-text list-group overflow-auto" style="max-height: 23em;max-width: 17em;">
-        {% for rule in client.ignorerules %}
-          <div class="list-group-item d-flex">
-            <span class="float-start flex-fill w-50">
-              {% for i in rule.rule %}{%
-                if i in (".", "^", "$", "*", "+", "?", "{", "}", "\\", "[", "]", "|", "(", ")")
-              %}<span class="text-primary">{{ i }}</span>{% else %}{{ i }}{% endif %}{% endfor %}
-            </span>
-            <form action="/api/user/clients/{{ client.id }}/delignore" method="POST">
-              <input type="hidden" name="rule" value="{{ rule.rule }}">
-              <button type="submit" class="btn-close float-end flex-fill" title="Delete"></button>
+      <h5 class="card-title">Filter Rules</h5>
+      <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="ignore-tab" data-bs-toggle="tab" data-bs-target="#ignore-pane" type="button" role="tab" onclick="setFilterMode('ignore')">Ignore list</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="alert-tab" data-bs-toggle="tab" data-bs-target="#alert-pane" type="button" role="tab" onclick="setFilterMode('alert')">Alert list</button>
+        </li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="ignore-pane" role="tabpanel">
+          <div class="card-text list-group overflow-auto" style="max-height: 20em;max-width: 17em;" id="ignoreList">
+            {% for rule in client.ignorerules %}
+              <div class="list-group-item d-flex">
+                <span class="float-start flex-fill w-50">
+                  {% for i in rule.rule %}{%
+                    if i in (".", "^", "$", "*", "+", "?", "{", "}", "\\", "[", "]", "|", "(", ")")
+                  %}<span class="text-primary">{{ i }}</span>{% else %}{{ i }}{% endif %}{% endfor %}
+                </span>
+                <button type="button" class="btn-close float-end flex-fill" title="Delete" onclick="deleteIgnoreRule('{{ rule.rule }}')"></button>
+              </div>
+            {% endfor %}
+            <form class="input-group" onsubmit="addIgnoreRule(event)">
+              <input class="form-control border-top-0 rounded-top-0" type="text" placeholder="Rule" name="rule" required>
+              <button type="submit" class="btn btn-outline-primary rounded-top-0">Add</button>
             </form>
           </div>
-        {% endfor %}
-        <form class="input-group" action="/api/user/clients/{{ client.id }}/addignore" method="POST">
-          <input class="form-control border-top-0 rounded-top-0" type="text" placeholder="Rule" name="rule" required>
-          <button type="submit" class="btn btn-outline-primary rounded-top-0">Add</button>
+        </div>
+        <div class="tab-pane fade" id="alert-pane" role="tabpanel">
+          <div class="card-text list-group overflow-auto" style="max-height: 20em;max-width: 17em;" id="alertList">
+            {% for rule in client.alertrules %}
+              <div class="list-group-item d-flex">
+                <span class="float-start flex-fill w-50">
+                  {% for i in rule.rule %}{%
+                    if i in (".", "^", "$", "*", "+", "?", "{", "}", "\\", "[", "]", "|", "(", ")")
+                  %}<span class="text-primary">{{ i }}</span>{% else %}{{ i }}{% endif %}{% endfor %}
+                </span>
+                <button type="button" class="btn-close float-end flex-fill" title="Delete" onclick="deleteAlertRule('{{ rule.rule }}')"></button>
+              </div>
+            {% endfor %}
+            <form class="input-group" onsubmit="addAlertRule(event)">
+              <input class="form-control border-top-0 rounded-top-0" type="text" placeholder="Rule" name="rule" required>
+              <button type="submit" class="btn btn-outline-primary rounded-top-0">Add</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
         </form>
       </div>
     </div>
@@ -118,25 +153,25 @@
     <div class="card-body">
       <h5 class="card-title">Commands</h5>
       <div class="card-text" style="max-width: 17em;">
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('start')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('start', this)"
               style="cursor: pointer;" title="Copy">start</span> - Start monitoring<br>
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('stop')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('stop', this)"
               style="cursor: pointer;" title="Copy">stop</span> - Stop monitoring<br>
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('lock')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('lock', this)"
               style="cursor: pointer;" title="Copy">lock</span> letter - Make a drive read-only<br>
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('release')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('release', this)"
               style="cursor: pointer;" title="Copy">release</span> letter - Make a drive non-read-only<br>
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('lockfile')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('lockfile', this)"
               style="cursor: pointer;" title="Copy">lockfile</span> path - Make a path read-only<br>
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('releasefile')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('releasefile', this)"
               style="cursor: pointer;" title="Copy">releasefile</span> path - Make a path non-read-only<br>
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('listdir')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('listdir', this)"
               style="cursor: pointer;" title="Copy">listdir</span> path - List the contents of directory<br>
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('download')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('download', this)"
               style="cursor: pointer;" title="Copy">download</span> path - Download file<br>
-<!--        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('upload')"-->
+<!--        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('upload', this)"-->
 <!--              style="cursor: pointer;" title="Copy">upload</span> path with a file - Upload file<br>-->
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('clear')"
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('clear', this)"
               style="cursor: pointer;" title="Copy">clear</span> - Clear console<br>
       </div>
     </div>
@@ -162,27 +197,351 @@
   </div>
 </div>
 <script>
+  function formatRegex(rule) {
+    const special = [".", "^", "$", "*", "+", "?", "{", "}", "\\", "[", "]", "|", "(", ")"];
+    return rule.split('').map(c => special.includes(c) ? `<span class="text-primary">${c}</span>` : c).join('');
+  }
+
+  function updateRuleLists(data) {
+    const ignoreList = document.getElementById('ignoreList');
+    const alertList = document.getElementById('alertList');
+    
+    ignoreList.innerHTML = data.ignore_rules.map(rule => `
+      <div class="list-group-item d-flex">
+        <span class="float-start flex-fill w-50">${formatRegex(rule)}</span>
+        <button type="button" class="btn-close float-end flex-fill" title="Delete" onclick="deleteIgnoreRule('${rule}')"></button>
+      </div>
+    `).join('') + `
+      <form class="input-group" onsubmit="addIgnoreRule(event)">
+        <input class="form-control border-top-0 rounded-top-0" type="text" placeholder="Rule" name="rule" required>
+        <button type="submit" class="btn btn-outline-primary rounded-top-0">Add</button>
+      </form>`;
+    
+    alertList.innerHTML = data.alert_rules.map(rule => `
+      <div class="list-group-item d-flex">
+        <span class="float-start flex-fill w-50">${formatRegex(rule)}</span>
+        <button type="button" class="btn-close float-end flex-fill" title="Delete" onclick="deleteAlertRule('${rule}')"></button>
+      </div>
+    `).join('') + `
+      <form class="input-group" onsubmit="addAlertRule(event)">
+        <input class="form-control border-top-0 rounded-top-0" type="text" placeholder="Rule" name="rule" required>
+        <button type="submit" class="btn btn-outline-primary rounded-top-0">Add</button>
+      </form>`;
+  }
+
+  function updateOnlineStatus(lastCheck) {
+    const now = Date.now() / 1000;
+    const diff = now - lastCheck;
+    const statusDot = document.querySelector('.position-absolute.p-1.mt-2');
+    const statusText = statusDot.nextElementSibling;
+    
+    if (diff <= 5) {
+      statusDot.className = 'position-absolute p-1 mt-2 bg-success rounded-circle';
+      statusText.innerHTML = 'Online';
+    } else {
+      statusDot.className = 'position-absolute p-1 mt-2 bg-secondary rounded-circle';
+      if (diff <= 60) {
+        statusText.innerHTML = `Last online: ${Math.floor(diff)} seconds ago`;
+      } else if (diff <= 3600) {
+        statusText.innerHTML = `Last online: ${Math.floor(diff / 60)} minutes ago`;
+      } else if (diff <= 86400) {
+        statusText.innerHTML = `Last online: ${Math.floor(diff / 3600)} hours ago`;
+      } else {
+        statusText.innerHTML = `Last online: ${new Date(lastCheck * 1000).toLocaleString()}`;
+      }
+    }
+  }
+
+  function setFilterMode(mode) {
+    const formData = new FormData();
+    formData.append('mode', mode);
+    fetch('/api/user/clients/{{ client.id }}/setfilter', { method: 'POST', body: formData })
+      .catch(e => console.error(e));
+  }
+
+  function addIgnoreRule(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    fetch('/api/user/clients/{{ client.id }}/addignore', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(data => { if (data.success) form.reset(); })
+      .catch(e => console.error(e));
+  }
+
+  function deleteIgnoreRule(rule) {
+    const formData = new FormData();
+    formData.append('rule', rule);
+    fetch('/api/user/clients/{{ client.id }}/delignore', { method: 'POST', body: formData })
+      .catch(e => console.error(e));
+  }
+
+  function addAlertRule(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    fetch('/api/user/clients/{{ client.id }}/addalert', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(data => { if (data.success) form.reset(); })
+      .catch(e => console.error(e));
+  }
+
+  function deleteAlertRule(rule) {
+    const formData = new FormData();
+    formData.append('rule', rule);
+    fetch('/api/user/clients/{{ client.id }}/delalert', { method: 'POST', body: formData })
+      .catch(e => console.error(e));
+  }
+
   let loadAlerts = window.onload
+  let lastStatus = { last_check: 0, ignore_rules: [], alert_rules: [], filter_mode: 'ignore' };
+  let lastServerContact = Date.now();
+  let serverOfflineAlerted = false;
+  
+  const commands = ['start', 'stop', 'lock', 'release', 'lockfile', 'releasefile', 'listdir', 'download', 'clear'];
+  let autocompleteMenu = null;
+  let currentMatches = [];
+  let selectedIndex = -1;
+  let knownPaths = new Set();
+  
+  function extractPathsFromConsole() {
+    const console = document.getElementById('console');
+    const spans = console.querySelectorAll('span.bg-secondary-subtle');
+    spans.forEach(span => {
+      const text = span.textContent.trim();
+      // Match paths (starting with / or drive letter on Windows)
+      if (text.match(/^(\/|[A-Z]:\\|[A-Z]:\/)/)) {
+        knownPaths.add(text);
+        // Also add parent directories
+        const parts = text.split('/');
+        for (let i = 1; i < parts.length; i++) {
+          const partial = parts.slice(0, i + 1).join('/');
+          if (partial) knownPaths.add(partial + (i < parts.length - 1 ? '/' : ''));
+        }
+      }
+    });
+  }
+  
   window.onload = function() {
     loadAlerts()
     let cons = document.getElementById('console')
+    const commandInput = document.getElementById('commandInput');
+    
+    // Create autocomplete menu
+    autocompleteMenu = document.createElement('div');
+    autocompleteMenu.style.cssText = 'position: absolute; background: white; border: 1px solid #ccc; display: none; z-index: 1000; max-height: 200px; overflow-y: auto;';
+    document.body.appendChild(autocompleteMenu);
+    
+    function hideAutocomplete() {
+      autocompleteMenu.style.display = 'none';
+      currentMatches = [];
+      selectedIndex = -1;
+    }
+    
+    function updateSelection() {
+      const items = autocompleteMenu.children;
+      for (let i = 0; i < items.length; i++) {
+        if (i === selectedIndex) {
+          items[i].style.background = '#0d6efd';
+          items[i].style.color = 'white';
+        } else {
+          items[i].style.background = 'white';
+          items[i].style.color = 'black';
+        }
+      }
+    }
+    
+    function showAutocomplete(matches, input) {
+      if (matches.length === 0) {
+        hideAutocomplete();
+        return;
+      }
+      
+      currentMatches = matches;
+      const rect = input.getBoundingClientRect();
+      autocompleteMenu.style.left = rect.left + 'px';
+      autocompleteMenu.style.top = (rect.bottom + window.scrollY) + 'px';
+      autocompleteMenu.style.minWidth = rect.width + 'px';
+      
+      autocompleteMenu.innerHTML = matches.map(item => {
+        const escaped = item.replace(/'/g, "\\'");
+        return `<div style="padding: 5px 10px; cursor: pointer;" onmouseover="this.style.background='#e9ecef'; this.style.color='black'" onmouseout="this.style.background='white'" onclick="
+          const input = document.getElementById('commandInput');
+          const parts = input.value.trim().split(' ');
+          parts[parts.length - 1] = '${escaped}';
+          input.value = parts.join(' ') + ('${escaped}'.endsWith('/') ? '' : ' ');
+          input.focus();
+          this.parentElement.style.display='none';
+          currentMatches=[];
+          selectedIndex=-1;
+        ">${item}</div>`;
+      }).join('');
+      
+      autocompleteMenu.style.display = 'block';
+    }
+    
+    // Tab autocomplete
+    commandInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        extractPathsFromConsole();
+        
+        const value = this.value.trim();
+        const parts = value.split(' ');
+        const lastPart = parts[parts.length - 1];
+        const isPath = lastPart.match(/^(\/|[A-Z]:\\|[A-Z]:\/)/);
+        
+        if (currentMatches.length > 0) {
+          // Cycle through existing matches
+          if (e.shiftKey) {
+            selectedIndex = (selectedIndex - 1 + currentMatches.length) % currentMatches.length;
+          } else {
+            selectedIndex = (selectedIndex + 1) % currentMatches.length;
+          }
+          const selected = currentMatches[selectedIndex];
+          parts[parts.length - 1] = selected;
+          this.value = parts.join(' ') + (selected.endsWith('/') ? '' : ' ');
+          updateSelection();
+        } else {
+          let matches;
+          
+          if (parts.length === 1 && !isPath) {
+            // First word: complete command
+            matches = commands.filter(cmd => cmd.startsWith(value));
+          } else {
+            // Complete path - only show next level
+            const allPaths = Array.from(knownPaths).filter(path => path.startsWith(lastPart) && path !== lastPart);
+            
+            // Find the depth of the current input
+            const inputDepth = (lastPart.match(/\//g) || []).length;
+            
+            // Only include paths that are one level deeper (or same level if it's a file)
+            matches = allPaths.filter(path => {
+              const pathDepth = (path.match(/\//g) || []).length;
+              return pathDepth === inputDepth || (pathDepth === inputDepth + 1 && path.endsWith('/'));
+            });
+            
+            matches.sort();
+          }
+          
+          if (matches.length === 1) {
+            // Single match: complete immediately
+            if (parts.length === 1 && !isPath) {
+              this.value = matches[0] + ' ';
+            } else {
+              parts[parts.length - 1] = matches[0];
+              this.value = parts.join(' ') + (matches[0].endsWith('/') ? '' : ' ');
+            }
+            hideAutocomplete();
+          } else if (matches.length > 1) {
+            // Multiple matches: just show menu, don't select yet
+            selectedIndex = -1;
+            showAutocomplete(matches, this);
+          }
+        }
+      } else if (e.key === 'ArrowDown' && currentMatches.length > 0) {
+        e.preventDefault();
+        const value = this.value.trim();
+        const parts = value.split(' ');
+        selectedIndex = (selectedIndex + 1) % currentMatches.length;
+        const selected = currentMatches[selectedIndex];
+        parts[parts.length - 1] = selected;
+        this.value = parts.join(' ') + (selected.endsWith('/') ? '' : ' ');
+        updateSelection();
+      } else if (e.key === 'ArrowUp' && currentMatches.length > 0) {
+        e.preventDefault();
+        const value = this.value.trim();
+        const parts = value.split(' ');
+        selectedIndex = (selectedIndex - 1 + currentMatches.length) % currentMatches.length;
+        const selected = currentMatches[selectedIndex];
+        parts[parts.length - 1] = selected;
+        this.value = parts.join(' ') + (selected.endsWith('/') ? '' : ' ');
+        updateSelection();
+      } else if (e.key === 'Escape') {
+        hideAutocomplete();
+      } else if (e.key !== 'Shift') {
+        // Reset on any other key
+        hideAutocomplete();
+      }
+    });
+    
+    commandInput.addEventListener('blur', function() {
+      setTimeout(hideAutocomplete, 200);
+    });
+    
     reload_console_HTML = () => fetch("/api/user/clients/{{ client.id }}/commandsHTML?page={{ page }}", { method: "POST" }).then(r => r.text()).then(t => {
       let is_bottom = (cons.scrollHeight - cons.scrollTop < 330);
       if (cons.innerHTML != t) {
         cons.innerHTML = t;
+        extractPathsFromConsole();
       }
       if (is_bottom) {
         cons.scrollTop = cons.scrollHeight;
-        // cons.scrollTo({ top: cons.scrollHeight, behavior: 'smooth' });
       }
     }).catch(e => {})
-    fetch("/api/user/clients/{{ client.id }}/commandsHTML?page={{ page }}", { method: "POST" }).then(r => r.text()).then(t => {cons.innerHTML = t;cons.scrollTop = cons.scrollHeight;}).catch(e => {})
+    fetch("/api/user/clients/{{ client.id }}/commandsHTML?page={{ page }}", { method: "POST" }).then(r => r.text()).then(t => {cons.innerHTML = t;cons.scrollTop = cons.scrollHeight;extractPathsFromConsole();}).catch(e => {})
     cons.scrollTop = cons.scrollHeight;
+    
     function reload_console() {
       reload_console_HTML()
       setTimeout(reload_console, 1000)
     }
+    
+    function sync_status() {
+      fetch('/api/user/clients/{{ client.id }}/status')
+        .then(r => r.json())
+        .then(data => {
+          lastServerContact = Date.now();
+          
+          // Hide server offline alert if it was showing
+          if (serverOfflineAlerted) {
+            const alertDiv = document.getElementById('serverOfflineAlert');
+            alertDiv.style.display = 'none';
+            alertDiv.classList.remove('show');
+            serverOfflineAlerted = false;
+          }
+          
+          if (data.success) {
+            // Only update if changed
+            if (data.last_check !== lastStatus.last_check) {
+              updateOnlineStatus(data.last_check);
+              lastStatus.last_check = data.last_check;
+            }
+            
+            // Only update rules if changed
+            const ignoreChanged = JSON.stringify(data.ignore_rules) !== JSON.stringify(lastStatus.ignore_rules);
+            const alertChanged = JSON.stringify(data.alert_rules) !== JSON.stringify(lastStatus.alert_rules);
+            
+            if (ignoreChanged || alertChanged) {
+              updateRuleLists(data);
+              lastStatus.ignore_rules = data.ignore_rules;
+              lastStatus.alert_rules = data.alert_rules;
+            }
+            
+            // Switch to active tab if filter mode changed
+            if (data.filter_mode !== lastStatus.filter_mode) {
+              const tab = data.filter_mode === 'alert' ? document.getElementById('alert-tab') : document.getElementById('ignore-tab');
+              if (tab && !tab.classList.contains('active')) {
+                tab.click();
+              }
+              lastStatus.filter_mode = data.filter_mode;
+            }
+          }
+        })
+        .catch(e => {
+          const timeSinceContact = Date.now() - lastServerContact;
+          if (timeSinceContact > 10000 && !serverOfflineAlerted) {
+            const alertDiv = document.getElementById('serverOfflineAlert');
+            alertDiv.style.display = 'block';
+            alertDiv.classList.add('show');
+            serverOfflineAlerted = true;
+          }
+        });
+      setTimeout(sync_status, 1000);
+    }
+    
     setTimeout(reload_console, 1000)
+    setTimeout(sync_status, 1000)
   }
 </script>
 {% endblock %}

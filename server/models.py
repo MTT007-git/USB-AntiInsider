@@ -58,3 +58,10 @@ class IgnoreRule(db.Model):
     client_id = db.Column(db.Integer, db.ForeignKey("client.id"), nullable=False)
     client = db.relationship("Client", backref=db.backref("ignorerules"))
     rule = db.Column(db.String(100), nullable=False)
+
+
+class AlertRule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey("client.id"), nullable=False)
+    client = db.relationship("Client", backref=db.backref("alertrules"))
+    rule = db.Column(db.String(100), nullable=False)

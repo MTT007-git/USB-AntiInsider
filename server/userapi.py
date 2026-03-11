@@ -1,7 +1,7 @@
 """
 API for watched clients
 """
-from flask import Blueprint, request, redirect, flash, make_response, render_template
+from flask import Blueprint, request, redirect, flash, make_response, render_template, jsonify
 from methods import login, add_command
 from models import *
 from manage import *
@@ -122,7 +122,7 @@ def start(user, client_id):
         flash("Client not found", "danger")
         return redirect(f"/clients/{client_id}")
     add_command(client_id, user.id, "start", ())
-    flash(f"Started monitoring {client.name}", "success")
+    flash(f"Started monitoring `{client.name}`", "success")
     return redirect(f"/clients/{client_id}")
 
 
@@ -134,7 +134,7 @@ def stop(user, client_id):
         flash("Client not found", "danger")
         return redirect(f"/clients/{client_id}")
     add_command(client_id, user.id, "stop", ())
-    flash(f"Stopped monitoring {client.name}", "success")
+    flash(f"Stopped monitoring `{client.name}`", "success")
     return redirect(f"/clients/{client_id}")
 
 
@@ -203,15 +203,12 @@ def commands_html(user, client_id):
 def addignore(user, client_id):
     client = Client.query.filter_by(id=client_id).first()
     if not client:
-        flash("Client not found", "danger")
-        return redirect(f"/clients/{client_id}")
+        return jsonify({"success": False, "message": "Client not found"}), 404
     rule_text = request.form.get("rule")
     if not rule_text:
-        flash("Empty rule", "danger")
-        return redirect(f"/clients/{client_id}")
+        return jsonify({"success": False, "message": "Empty rule"}), 400
     if IgnoreRule.query.filter_by(client_id=client_id, rule=rule_text).first():
-        flash("Rule already exists", "warning")
-        return redirect(f"/clients/{client_id}")
+        return jsonify({"success": False, "message": "Rule already exists"}), 400
     rule = IgnoreRule(client_id=client_id, rule=rule_text)
     db.session.add(rule)
     db.session.commit()
@@ -222,7 +219,7 @@ def addignore(user, client_id):
         argument = CommandArgument(command_id=command.id, position=i, argument=argument.rule)
         db.session.add(argument)
     db.session.commit()
-    return redirect(f"/clients/{client_id}")
+    return jsonify({"success": True})
 
 
 @api.route("/clients/<int:client_id>/delignore", methods=["POST"])
@@ -230,15 +227,12 @@ def addignore(user, client_id):
 def delignore(user, client_id):
     client = Client.query.filter_by(id=client_id).first()
     if not client:
-        flash("Client not found", "danger")
-        return redirect(f"/clients/{client_id}")
+        return jsonify({"success": False, "message": "Client not found"}), 404
     rule_text = request.form.get("rule")
     if not rule_text:
-        flash("Empty rule", "danger")
-        return redirect(f"/clients/{client_id}")
+        return jsonify({"success": False, "message": "Empty rule"}), 400
     if not IgnoreRule.query.filter_by(client_id=client_id, rule=rule_text).first():
-        flash("Rule doesn't exist", "danger")
-        return redirect(f"/clients/{client_id}")
+        return jsonify({"success": False, "message": "Rule doesn't exist"}), 404
     IgnoreRule.query.filter_by(client_id=client_id, rule=rule_text).delete()
     db.session.commit()
     command = Command(client_id=client_id, user_id=user.id, command="ignorelist", is_from_server=True, time=time.time())
@@ -248,7 +242,86 @@ def delignore(user, client_id):
         argument = CommandArgument(command_id=command.id, position=i, argument=argument.rule)
         db.session.add(argument)
     db.session.commit()
-    return redirect(f"/clients/{client_id}")
+    return jsonify({"success": True})
+
+
+@api.route("/clients/<int:client_id>/addalert", methods=["POST"])
+@login
+def addalert(user, client_id):
+    client = Client.query.filter_by(id=client_id).first()
+    if not client:
+        return jsonify({"success": False, "message": "Client not found"}), 404
+    rule_text = request.form.get("rule")
+    if not rule_text:
+        return jsonify({"success": False, "message": "Empty rule"}), 400
+    if AlertRule.query.filter_by(client_id=client_id, rule=rule_text).first():
+        return jsonify({"success": False, "message": "Rule already exists"}), 400
+    rule = AlertRule(client_id=client_id, rule=rule_text)
+    db.session.add(rule)
+    db.session.commit()
+    command = Command(client_id=client_id, user_id=user.id, command="alertlist", is_from_server=True, time=time.time())
+    db.session.add(command)
+    db.session.commit()
+    for i, argument in enumerate(AlertRule.query.filter_by(client_id=client_id).all()):
+        argument = CommandArgument(command_id=command.id, position=i, argument=argument.rule)
+        db.session.add(argument)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api.route("/clients/<int:client_id>/delalert", methods=["POST"])
+@login
+def delalert(user, client_id):
+    client = Client.query.filter_by(id=client_id).first()
+    if not client:
+        return jsonify({"success": False, "message": "Client not found"}), 404
+    rule_text = request.form.get("rule")
+    if not rule_text:
+        return jsonify({"success": False, "message": "Empty rule"}), 400
+    if not AlertRule.query.filter_by(client_id=client_id, rule=rule_text).first():
+        return jsonify({"success": False, "message": "Rule doesn't exist"}), 404
+    AlertRule.query.filter_by(client_id=client_id, rule=rule_text).delete()
+    db.session.commit()
+    command = Command(client_id=client_id, user_id=user.id, command="alertlist", is_from_server=True, time=time.time())
+    db.session.add(command)
+    db.session.commit()
+    for i, argument in enumerate(AlertRule.query.filter_by(client_id=client_id).all()):
+        argument = CommandArgument(command_id=command.id, position=i, argument=argument.rule)
+        db.session.add(argument)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api.route("/clients/<int:client_id>/status", methods=["GET"])
+@login
+def client_status(user, client_id):
+    client = Client.query.filter_by(id=client_id).first()
+    if not client:
+        return jsonify({"success": False}), 404
+    
+    # Determine active filter mode based on which has rules
+    filter_mode = "alert" if len(client.alertrules) > 0 else "ignore"
+    
+    return jsonify({
+        "success": True,
+        "last_check": client.last_check,
+        "ignore_rules": [r.rule for r in client.ignorerules],
+        "alert_rules": [r.rule for r in client.alertrules],
+        "filter_mode": filter_mode
+    })
+
+
+@api.route("/clients/<int:client_id>/setfilter", methods=["POST"])
+@login
+def setfilter(user, client_id):
+    client = Client.query.filter_by(id=client_id).first()
+    if not client:
+        return jsonify({"success": False, "message": "Client not found"}), 404
+    mode = request.form.get("mode")
+    if mode not in ("ignore", "alert"):
+        return jsonify({"success": False, "message": "Invalid mode"}), 400
+    add_command(client_id, user.id, "setfilter", (mode,))
+    return jsonify({"success": True})
 
 
 @api.route("/clients/<int:client_id>/upload", methods=["POST"])

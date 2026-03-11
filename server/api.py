@@ -48,6 +48,25 @@ def send(client):
                 argument = CommandArgument(command_id=cmd.id, position=i, argument=argument.rule)
                 db.session.add(argument)
             db.session.commit()
+            
+            cmd = Command(client_id=client.id, command="alertlist", is_from_server=True,
+                          time=time.time() + 2)
+            db.session.add(cmd)
+            db.session.commit()
+            for i, argument in enumerate(AlertRule.query.filter_by(client_id=client.id).all()):
+                argument = CommandArgument(command_id=cmd.id, position=i, argument=argument.rule)
+                db.session.add(argument)
+            db.session.commit()
+            
+            # Send current filter mode
+            filter_mode = "alert" if len(client.alertrules) > 0 else "ignore"
+            cmd = Command(client_id=client.id, command="setfilter", is_from_server=True,
+                          time=time.time() + 3)
+            db.session.add(cmd)
+            db.session.commit()
+            argument = CommandArgument(command_id=cmd.id, position=0, argument=filter_mode)
+            db.session.add(argument)
+            db.session.commit()
         if command[0]:
             if command[-1]:
                 user_id = command[0]

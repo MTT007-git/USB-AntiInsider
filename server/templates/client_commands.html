@@ -3,7 +3,7 @@
     <span class="text-dark">...</span>
     <br>
   {% endif %}
-  {% for command in commands[100 * (page - 1):100 * page] if command.command not in ("[system]", "ignorelist", "[ignorelist]") %}
+  {% for command in commands[100 * (page - 1):100 * page] if command.command not in ("[system]", "ignorelist", "[ignorelist]", "alertlist", "[alertlist]") %}
     {% if not command.is_sent %}
       ⌛
     {% endif %}
@@ -23,7 +23,7 @@
           {% if idx % 2 == 0 %}
             <span>{{ part }}</span>
           {% else %}
-            <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ part }}')"
+            <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ part }}', this)"
                   style="cursor: pointer;" title="Copy">{{ part }}</span>
           {% endif %}
         {% endfor %}
@@ -33,7 +33,7 @@
         {% if idx % 2 == 0 %}
           <span>{{ part }}</span>
         {% else %}
-          <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ part }}')"
+          <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ part }}', this)"
                 style="cursor: pointer;" title="Copy">{{ part }}</span>
         {% endif %}
       {% endfor %}
@@ -47,7 +47,7 @@
               {% if idx % 2 == 0 %}
                 <span>{{ part }}</span>
               {% else %}
-                <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ part }}')"
+                <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ part }}', this)"
                       style="cursor: pointer;" title="Copy">{{ part }}</span>
               {% endif %}
             {% endfor %}
@@ -57,7 +57,7 @@
             {% if idx % 2 == 0 %}
               <span>{{ part }}</span>
             {% else %}
-              <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ part }}')"
+              <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('{{ part }}', this)"
                     style="cursor: pointer;" title="Copy">{{ part }}</span>
             {% endif %}
           {% endfor %}

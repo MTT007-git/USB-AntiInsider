@@ -291,7 +291,7 @@ def watch_drive(drive):
     observer = Observer()
     observer.schedule(handler, drive, recursive=True)
     observer.start()
-    send_all(f"Monitoring {drive}")
+    send_all(f"Monitoring `{drive}`")
     try:
         while len(monitoring) > 0 and drive in current_drives:
             time.sleep(1)
@@ -299,7 +299,7 @@ def watch_drive(drive):
         pass
     observer.stop()
     observer.join()
-    send_all(f"Stopped monitoring {drive}")
+    send_all(f"Stopped monitoring `{drive}`")
 
 
 @bot.message_handler(commands=["auth"])
@@ -709,9 +709,9 @@ def start(msg):
     if is_monitoring:
         for d in current_drives:
             if d in current_removable_drives:
-                bot.send_message(msg.chat.id, f"Removable drive found: {d}")
+                bot.send_message(msg.chat.id, f"Removable drive found: `{d}`")
             else:
-                bot.send_message(msg.chat.id, f"Drive found: {d}")
+                bot.send_message(msg.chat.id, f"Drive found: `{d}`")
     else:
         threading.Thread(target=monitor, daemon=True).start()
 
@@ -728,9 +728,9 @@ def monitor():
 
     for d in current_drives:
         if d in current_removable_drives:
-            send_all(f"Removable drive found: {d}")
+            send_all(f"Removable drive found: `{d}`")
         else:
-            send_all(f"Drive found: {d}")
+            send_all(f"Drive found: `{d}`")
         t = threading.Thread(target=watch_drive, args=(d,), daemon=True)
         t.start()
         watched_threads[d] = t
@@ -743,18 +743,18 @@ def monitor():
 
         for d in added:
             if d in new_removable_drives:
-                send_all(f"Removable drive inserted: {d}")
+                send_all(f"Removable drive inserted: `{d}`")
             else:
-                send_all(f"Non-removable drive inserted: {d}")  # How?
+                send_all(f"Non-removable drive inserted: `{d}`")  # How?
             t = threading.Thread(target=watch_drive, args=(d,), daemon=True)
             t.start()
             watched_threads[d] = t
 
         for d in removed:
             if d in current_removable_drives:
-                send_all(f"Removable drive removed: {d}")
+                send_all(f"Removable drive removed: `{d}`")
             else:
-                send_all(f"Non-removable drive removed: {d}")  # How?
+                send_all(f"Non-removable drive removed: `{d}`")  # How?
             watched_threads.pop(d, None)
 
         current_drives = new_drives

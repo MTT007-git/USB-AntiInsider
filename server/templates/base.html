@@ -19,7 +19,7 @@
       }
     </style>
     <script>
-      function copyToClipboard(text) {
+      function copyToClipboard(text, element) {
         const textArea = document.createElement('textarea');
         textArea.value = text;
         textArea.style.position = 'fixed';
@@ -29,6 +29,18 @@
         textArea.focus();
         textArea.select();
         document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        // Visual feedback
+        if (element) {
+          const originalBg = element.style.backgroundColor;
+          element.style.backgroundColor = '#198754';
+          element.style.color = 'white';
+          setTimeout(() => {
+            element.style.backgroundColor = originalBg;
+            element.style.color = '';
+          }, 200);
+        }
       }
       window.onload = function() {
         alerts = document.getElementsByClassName("alert")
