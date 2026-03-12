@@ -167,9 +167,10 @@ def clientcommand(user, client_id):
     if not command:
         flash("Command empty", "danger")
         return redirect(f"/clients/{client_id}")
-    arguments = command.split(" ", 1)[1:]
-    command = command.split(" ", 1)[0]
-    if command not in ("start", "stop", "lock", "release", "lockfile", "releasefile", "listdir", "download", "clear"):
+    command = command.strip()
+    arguments = [arg.strip() for arg in command.split(" ", 1)[1:]]
+    command = command.split(" ", 1)[0].strip()
+    if command not in ("start", "stop", "lock", "release", "lockfile", "releasefile", "ls", "listdir", "cat", "download", "clear"):
         flash(f"Unknown command: \"{command}\"", "danger")
         return redirect(f"/clients/{client_id}")
     command = Command(client_id=client_id, user_id=user.id, command=command, is_from_server=True, time=time.time())

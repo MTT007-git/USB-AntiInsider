@@ -44,6 +44,62 @@
           </form>
         </div>
         <div class="mb-1">
+          <form onsubmit="sendCommand(event, 'lock')">
+            <div class="input-group">
+              <input type="text" name="arg" class="form-control path-input" placeholder="Drive path" required>
+              <button type="submit" class="btn btn-outline-warning">Lock Drive</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
+          <form onsubmit="sendCommand(event, 'release')">
+            <div class="input-group">
+              <input type="text" name="arg" class="form-control path-input" placeholder="Drive path" required>
+              <button type="submit" class="btn btn-outline-info">Release Drive</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
+          <form onsubmit="sendCommand(event, 'lockfile')">
+            <div class="input-group">
+              <input type="text" name="arg" class="form-control path-input" placeholder="Path" required>
+              <button type="submit" class="btn btn-outline-warning">Lock File</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
+          <form onsubmit="sendCommand(event, 'releasefile')">
+            <div class="input-group">
+              <input type="text" name="arg" class="form-control path-input" placeholder="Path" required>
+              <button type="submit" class="btn btn-outline-info">Release File</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
+          <form onsubmit="sendCommand(event, 'ls')">
+            <div class="input-group">
+              <input type="text" name="arg" class="form-control path-input" placeholder="Directory path" required>
+              <button type="submit" class="btn btn-outline-primary">List Dir</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
+          <form onsubmit="sendCommand(event, 'cat')">
+            <div class="input-group">
+              <input type="text" name="arg" class="form-control path-input" placeholder="File path" required>
+              <button type="submit" class="btn btn-outline-primary">Cat</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
+          <form onsubmit="sendCommand(event, 'download')">
+            <div class="input-group">
+              <input type="text" name="arg" class="form-control path-input" placeholder="File path" required>
+              <button type="submit" class="btn btn-outline-primary">Download</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-1">
           <form action="/api/user/clients/{{ client.id }}/upload" method="POST" enctype="multipart/form-data">
             <input type="file" name="file" class="form-control rounded-bottom-0" required>
             <div class="input-group">
@@ -59,6 +115,9 @@
               <button type="submit" class="btn btn-outline-primary">Download</button>
             </div>
           </form>
+        </div>
+        <div class="mb-1">
+          <button class="btn btn-outline-secondary w-100" onclick="sendCommand(event, 'clear')">Clear Console</button>
         </div>
         <div class="mb-1">
           <button class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#tokenCollapse">Show token</button>
@@ -79,10 +138,10 @@
     </div>
   </div>
   <div class="col card mb-1 me-1">
-    <div class="card-body">
+    <div class="card-body d-flex flex-column" style="height: 600px;">
       <h5 class="card-title">Console</h5>
-      <div class="card-text bg-light py-1 px-2 rounded">
-        <div class="overflow-auto mb-1" style="max-height: 20em; max-width: 25em;" id="console">
+      <div class="card-text bg-light py-1 px-2 rounded d-flex flex-column flex-grow-1" style="min-height: 0;">
+        <div class="overflow-auto mb-1 flex-grow-1" style="max-width: 25em; min-height: 0;" id="console">
           <code>
             Loading
           </code>
@@ -158,15 +217,17 @@
         <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('stop', this)"
               style="cursor: pointer;" title="Copy">stop</span> - Stop monitoring<br>
         <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('lock', this)"
-              style="cursor: pointer;" title="Copy">lock</span> letter - Make a drive read-only<br>
+              style="cursor: pointer;" title="Copy">lock</span> path - Make a drive read-only<br>
         <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('release', this)"
-              style="cursor: pointer;" title="Copy">release</span> letter - Make a drive non-read-only<br>
+              style="cursor: pointer;" title="Copy">release</span> path - Make a drive non-read-only<br>
         <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('lockfile', this)"
               style="cursor: pointer;" title="Copy">lockfile</span> path - Make a path read-only<br>
         <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('releasefile', this)"
               style="cursor: pointer;" title="Copy">releasefile</span> path - Make a path non-read-only<br>
-        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('listdir', this)"
-              style="cursor: pointer;" title="Copy">listdir</span> path - List the contents of directory<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('ls', this)"
+              style="cursor: pointer;" title="Copy">ls</span> path - List the contents of directory<br>
+        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('cat', this)"
+              style="cursor: pointer;" title="Copy">cat</span> path - Show file contents<br>
         <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('download', this)"
               style="cursor: pointer;" title="Copy">download</span> path - Download file<br>
 <!--        <span class="bg-secondary-subtle rounded px-1" onclick="copyToClipboard('upload', this)"-->
@@ -197,6 +258,22 @@
   </div>
 </div>
 <script>
+  function sendCommand(event, command) {
+    event.preventDefault();
+    const form = event.target.tagName === 'FORM' ? event.target : event.target.closest('form');
+    const arg = form ? form.querySelector('input[name="arg"]')?.value : '';
+    const fullCommand = arg ? `${command} ${arg}` : command;
+    
+    const formData = new FormData();
+    formData.append('command', fullCommand);
+    
+    fetch('/api/user/clients/{{ client.id }}/command', { method: 'POST', body: formData })
+      .then(() => {
+        if (form) form.reset();
+      })
+      .catch(e => console.error(e));
+  }
+
   function formatRegex(rule) {
     const special = [".", "^", "$", "*", "+", "?", "{", "}", "\\", "[", "]", "|", "(", ")"];
     return rule.split('').map(c => special.includes(c) ? `<span class="text-primary">${c}</span>` : c).join('');
@@ -298,7 +375,7 @@
   let lastServerContact = Date.now();
   let serverOfflineAlerted = false;
   
-  const commands = ['start', 'stop', 'lock', 'release', 'lockfile', 'releasefile', 'listdir', 'download', 'clear'];
+  const commands = ['start', 'stop', 'lock', 'release', 'lockfile', 'releasefile', 'ls', 'cat', 'download', 'clear'];
   let autocompleteMenu = null;
   let currentMatches = [];
   let selectedIndex = -1;
@@ -344,6 +421,7 @@
         if (i === selectedIndex) {
           items[i].style.background = '#0d6efd';
           items[i].style.color = 'white';
+          items[i].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         } else {
           items[i].style.background = 'white';
           items[i].style.color = 'black';
@@ -363,18 +441,26 @@
       autocompleteMenu.style.top = (rect.bottom + window.scrollY) + 'px';
       autocompleteMenu.style.minWidth = rect.width + 'px';
       
+      const isCommandInput = input.id === 'commandInput';
+      
       autocompleteMenu.innerHTML = matches.map(item => {
         const escaped = item.replace(/'/g, "\\'");
-        return `<div style="padding: 5px 10px; cursor: pointer;" onmouseover="this.style.background='#e9ecef'; this.style.color='black'" onmouseout="this.style.background='white'" onclick="
-          const input = document.getElementById('commandInput');
-          const parts = input.value.trim().split(' ');
-          parts[parts.length - 1] = '${escaped}';
-          input.value = parts.join(' ') + ('${escaped}'.endsWith('/') ? '' : ' ');
-          input.focus();
-          this.parentElement.style.display='none';
-          currentMatches=[];
-          selectedIndex=-1;
-        ">${item}</div>`;
+        const onclick = isCommandInput 
+          ? `const input = document.getElementById('commandInput');
+             const parts = input.value.trim().split(' ');
+             parts[parts.length - 1] = '${escaped}';
+             input.value = parts.join(' ') + ('${escaped}'.endsWith('/') ? '' : ' ');
+             input.focus();
+             this.parentElement.style.display='none';
+             currentMatches=[];
+             selectedIndex=-1;`
+          : `event.target.closest('input').value = '${escaped}';
+             event.target.closest('input').focus();
+             this.parentElement.style.display='none';
+             currentMatches=[];
+             selectedIndex=-1;`;
+        
+        return `<div style="padding: 5px 10px; cursor: pointer;" onmouseover="this.style.background='#e9ecef'; this.style.color='black'" onmouseout="this.style.background='white'" onclick="${onclick}">${item}</div>`;
       }).join('');
       
       autocompleteMenu.style.display = 'block';
@@ -467,6 +553,64 @@
     
     commandInput.addEventListener('blur', function() {
       setTimeout(hideAutocomplete, 200);
+    });
+    
+    // Add autocomplete to all path inputs in Controls panel
+    document.querySelectorAll('.path-input').forEach(input => {
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          extractPathsFromConsole();
+          
+          const value = this.value.trim();
+          
+          if (currentMatches.length > 0) {
+            // Cycle through existing matches
+            if (e.shiftKey) {
+              selectedIndex = (selectedIndex - 1 + currentMatches.length) % currentMatches.length;
+            } else {
+              selectedIndex = (selectedIndex + 1) % currentMatches.length;
+            }
+            this.value = currentMatches[selectedIndex];
+            updateSelection();
+          } else {
+            // Complete path
+            const allPaths = Array.from(knownPaths).filter(path => path.startsWith(value) && path !== value);
+            const inputDepth = (value.match(/\//g) || []).length;
+            const matches = allPaths.filter(path => {
+              const pathDepth = (path.match(/\//g) || []).length;
+              return pathDepth === inputDepth || (pathDepth === inputDepth + 1 && path.endsWith('/'));
+            });
+            matches.sort();
+            
+            if (matches.length === 1) {
+              this.value = matches[0];
+              hideAutocomplete();
+            } else if (matches.length > 1) {
+              selectedIndex = -1;
+              showAutocomplete(matches, this);
+            }
+          }
+        } else if (e.key === 'ArrowDown' && currentMatches.length > 0) {
+          e.preventDefault();
+          selectedIndex = (selectedIndex + 1) % currentMatches.length;
+          this.value = currentMatches[selectedIndex];
+          updateSelection();
+        } else if (e.key === 'ArrowUp' && currentMatches.length > 0) {
+          e.preventDefault();
+          selectedIndex = (selectedIndex - 1 + currentMatches.length) % currentMatches.length;
+          this.value = currentMatches[selectedIndex];
+          updateSelection();
+        } else if (e.key === 'Escape') {
+          hideAutocomplete();
+        } else if (e.key !== 'Shift') {
+          hideAutocomplete();
+        }
+      });
+      
+      input.addEventListener('blur', function() {
+        setTimeout(hideAutocomplete, 200);
+      });
     });
     
     reload_console_HTML = () => fetch("/api/user/clients/{{ client.id }}/commandsHTML?page={{ page }}", { method: "POST" }).then(r => r.text()).then(t => {

@@ -360,6 +360,7 @@ def setfilter(usr, cmd, args, tg):
 
 
 @handler("listdir")
+@handler("ls")
 def listdir(usr, cmd, args, tg):
     path = args[0].replace("\\", "/")
     if not path.endswith("/"):
@@ -372,13 +373,36 @@ def listdir(usr, cmd, args, tg):
         return
     try:
         send_update((usr, cmd, "info", f"Directory of `{path}`\n" +
-                     "\n".join([f"> `{path + i}`" for i in os.listdir(path) if os.path.isdir(path + i)]) + "\n" +
+                     "\n".join([f"> `{path + i.rstrip("/")}/`" for i in os.listdir(path) if os.path.isdir(path + i)]) + "\n" +
                      "\n".join([f"   `{path + i}`" for i in os.listdir(path) if not os.path.isdir(path + i)]), tg))
     except Exception as e:
         if "Permission denied" in str(e) or "Access is denied" in str(e):
             send_update((usr, cmd, "danger", "Permission denied", tg))
         else:
             send_update((usr, cmd, "danger", "Unknown error"), tg)
+            print(e)
+
+
+@handler("cat")
+def cat(usr, cmd, args, tg):
+    path = args[0].replace("\\", "/")
+    if not os.path.exists(path):
+        send_update((usr, cmd, "danger", "Path doesn't exist", tg))
+        return
+    if not os.path.isfile(path):
+        send_update((usr, cmd, "danger", "Path is not a file", tg))
+        return
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read(10000)  # Limit to 10KB
+            if len(content) == 10000:
+                content += "\n... (truncated)"
+            send_update((usr, cmd, "info", f"Contents of `{path}`:\n```\n{content}\n```", tg))
+    except Exception as e:
+        if "Permission denied" in str(e) or "Access is denied" in str(e):
+            send_update((usr, cmd, "danger", "Permission denied", tg))
+        else:
+            send_update((usr, cmd, "danger", f"Error reading file: {str(e)}"), tg)
             print(e)
 
 
